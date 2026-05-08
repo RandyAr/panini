@@ -1167,18 +1167,31 @@ function buildPrintHTML(owned, mode) {
 
   const introToShow = INTRO_STICKERS.filter((s) => showAll || !owned[s.id])
   if (introToShow.length > 0) {
-    const html = introToShow
-      .map((s) => {
-        const cls = showAll && owned[s.id] ? 'intro done' : 'intro'
-        return `<span class="${cls}">${s.number} ${s.label}</span>`
-      })
-      .join('')
-    body += `
-      <section class="confed">
-        <h2>INICIO DEL ÁLBUM <span class="confed-label">figuritas 00-08</span></h2>
-        <div class="team"><div class="slots">${html}</div></div>
-      </section>
-    `
+    if (showAll) {
+      const html = introToShow
+        .map((s) => {
+          const cls = owned[s.id] ? 'intro done' : 'intro'
+          return `<span class="${cls}">${s.number} ${s.label}</span>`
+        })
+        .join('')
+      body += `
+        <section class="confed">
+          <h2>INICIO DEL ÁLBUM <span class="confed-label">figuritas 00-08</span></h2>
+          <div class="team"><div class="slots">${html}</div></div>
+        </section>
+      `
+    } else {
+      const numbers = introToShow.map((s) => s.number).join(', ')
+      body += `
+        <section class="confed">
+          <h2>INICIO DEL ÁLBUM <span class="confed-label">${introToShow.length} faltan</span></h2>
+          <div class="row">
+            <div class="row-name"><strong>Inicio</strong></div>
+            <div class="row-nums">${numbers}</div>
+          </div>
+        </section>
+      `
+    }
   }
 
   for (const confed of CONFED_ORDER) {
@@ -1193,20 +1206,30 @@ function buildPrintHTML(owned, mode) {
       }
       if (slots.length === 0) continue
 
-      const teamSlots = slots
-        .map((s) => {
-          const extra = s.n === 1 ? ' shield' : s.n === 13 ? ' squad' : ''
-          const cls = showAll && s.has ? `slot${extra} done` : `slot${extra}`
-          return `<span class="${cls}">${s.n}</span>`
-        })
-        .join('')
+      if (showAll) {
+        const teamSlots = slots
+          .map((s) => {
+            const extra = s.n === 1 ? ' shield' : s.n === 13 ? ' squad' : ''
+            const cls = s.has ? `slot${extra} done` : `slot${extra}`
+            return `<span class="${cls}">${s.n}</span>`
+          })
+          .join('')
 
-      confedHTML += `
-        <div class="team">
-          <div class="team-name">${team.flag} <strong>${team.name}</strong> <span class="code">${team.code}</span></div>
-          <div class="slots">${teamSlots}</div>
-        </div>
-      `
+        confedHTML += `
+          <div class="team">
+            <div class="team-name">${team.flag} <strong>${team.name}</strong> <span class="code">${team.code}</span></div>
+            <div class="slots">${teamSlots}</div>
+          </div>
+        `
+      } else {
+        const numbers = slots.map((s) => s.n).join(', ')
+        confedHTML += `
+          <div class="row">
+            <div class="row-name">${team.flag} <strong>${team.name}</strong> <span class="code">${team.code}</span> <span class="row-count">(${slots.length})</span></div>
+            <div class="row-nums">${numbers}</div>
+          </div>
+        `
+      }
     }
 
     if (confedHTML) {
@@ -1221,18 +1244,31 @@ function buildPrintHTML(owned, mode) {
 
   const champsToShow = CHAMPIONS_STICKERS.filter((c) => showAll || !owned[c.id])
   if (champsToShow.length > 0) {
-    const html = champsToShow
-      .map((c) => {
-        const cls = showAll && owned[c.id] ? 'champ done' : 'champ'
-        return `<span class="${cls}">${c.number}</span>`
-      })
-      .join('')
-    body += `
-      <section class="confed">
-        <h2>CAMPEONES DEL MUNDO <span class="confed-label">figuritas 9-19</span></h2>
-        <div class="team"><div class="slots">${html}</div></div>
-      </section>
-    `
+    if (showAll) {
+      const html = champsToShow
+        .map((c) => {
+          const cls = owned[c.id] ? 'champ done' : 'champ'
+          return `<span class="${cls}">${c.number}</span>`
+        })
+        .join('')
+      body += `
+        <section class="confed">
+          <h2>CAMPEONES DEL MUNDO <span class="confed-label">figuritas 9-19</span></h2>
+          <div class="team"><div class="slots">${html}</div></div>
+        </section>
+      `
+    } else {
+      const numbers = champsToShow.map((c) => c.number).join(', ')
+      body += `
+        <section class="confed">
+          <h2>CAMPEONES DEL MUNDO <span class="confed-label">${champsToShow.length} faltan</span></h2>
+          <div class="row">
+            <div class="row-name"><strong>Campeones</strong></div>
+            <div class="row-nums">${numbers}</div>
+          </div>
+        </section>
+      `
+    }
   }
 
   return `<!DOCTYPE html>
@@ -1296,6 +1332,17 @@ function buildPrintHTML(owned, mode) {
   }
   .champ.done {
     background: #047857; color: white; border-color: #047857; text-decoration: line-through;
+  }
+  .row {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 5px 0; border-bottom: 1px dotted #d6d3d1; break-inside: avoid;
+  }
+  .row-name { flex: 0 0 160px; font-size: 10pt; }
+  .row-name .code { color: #a8a29e; font-size: 8pt; font-family: monospace; }
+  .row-name .row-count { color: #047857; font-size: 8.5pt; font-weight: 700; margin-left: 2px; }
+  .row-nums {
+    flex: 1; font-size: 11pt; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: 0.02em; word-spacing: 0.05em; line-height: 1.5;
   }
   footer {
     margin-top: 12px; padding-top: 8px; border-top: 1px solid #e7e5e4;
