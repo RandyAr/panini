@@ -448,21 +448,55 @@ function Tracker({ onLogout }) {
       if (printDoc.body.className) container.className = printDoc.body.className
       container.innerHTML = printDoc.body.innerHTML
 
+      const closeBtn = document.createElement('button')
+      closeBtn.id = '__panini-print-close__'
+      closeBtn.type = 'button'
+      closeBtn.textContent = '✕ Cerrar'
+
+      const printBtn = document.createElement('button')
+      printBtn.id = '__panini-print-again__'
+      printBtn.type = 'button'
+      printBtn.textContent = '🖨 Imprimir'
+
       const styleEl = document.createElement('style')
       styleEl.id = '__panini-print-style__'
       styleEl.textContent = `
-        @media screen { #__panini-print__ { display: none !important; } }
-        @media print {
-          body > *:not(#__panini-print__) { display: none !important; }
-          #__panini-print__ { display: block !important; }
-          ${collectedCSS}
+        body > *:not(#__panini-print__):not(#__panini-print-close__):not(#__panini-print-again__) {
+          display: none !important;
         }
+        #__panini-print__ {
+          background: white !important;
+          padding: 16px 16px 80px;
+          min-height: 100vh;
+        }
+        #__panini-print-close__, #__panini-print-again__ {
+          position: fixed; bottom: 16px; z-index: 99999;
+          padding: 12px 18px; border: none; border-radius: 999px;
+          font-size: 15px; font-weight: 700; cursor: pointer;
+          box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        #__panini-print-close__ {
+          right: 16px; background: #0f172a; color: #fff;
+        }
+        #__panini-print-again__ {
+          left: 16px; background: #047857; color: #fff;
+        }
+        @media print {
+          #__panini-print-close__, #__panini-print-again__ { display: none !important; }
+          #__panini-print__ { padding: 0 !important; min-height: 0 !important; }
+        }
+        ${collectedCSS}
       `
 
       const originalTitle = document.title
+      const originalScrollY = window.scrollY
       document.head.appendChild(styleEl)
       document.body.appendChild(container)
+      document.body.appendChild(closeBtn)
+      document.body.appendChild(printBtn)
       if (printDoc.title) document.title = printDoc.title
+      window.scrollTo(0, 0)
 
       let cleaned = false
       const cleanup = () => {
@@ -470,20 +504,25 @@ function Tracker({ onLogout }) {
         cleaned = true
         container.remove()
         styleEl.remove()
+        closeBtn.remove()
+        printBtn.remove()
         document.title = originalTitle
+        window.scrollTo(0, originalScrollY)
         window.removeEventListener('afterprint', cleanup)
       }
-      window.addEventListener('afterprint', cleanup)
-      setTimeout(cleanup, 120000)
-
-      setTimeout(() => {
+      const triggerPrint = () => {
         try {
           window.print()
         } catch (e) {
           console.error(e)
-          cleanup()
         }
-      }, 100)
+      }
+      closeBtn.addEventListener('click', cleanup)
+      printBtn.addEventListener('click', triggerPrint)
+      window.addEventListener('afterprint', cleanup)
+      setTimeout(cleanup, 600000)
+
+      setTimeout(triggerPrint, 250)
       return
     }
 
