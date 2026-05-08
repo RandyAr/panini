@@ -445,6 +445,7 @@ function Tracker({ onLogout }) {
 
       const container = document.createElement('div')
       container.id = '__panini-print__'
+      if (printDoc.body.className) container.className = printDoc.body.className
       container.innerHTML = printDoc.body.innerHTML
 
       const styleEl = document.createElement('style')
@@ -1186,8 +1187,8 @@ function buildPrintHTML(owned, mode) {
         <section class="confed">
           <h2>INICIO DEL ÁLBUM <span class="confed-label">${introToShow.length} faltan</span></h2>
           <div class="row">
-            <div class="row-name"><strong>Inicio</strong></div>
-            <div class="row-nums">${numbers}</div>
+            <span class="row-name"><strong>Inicio</strong></span>
+            <span class="row-nums">${numbers}</span>
           </div>
         </section>
       `
@@ -1225,8 +1226,8 @@ function buildPrintHTML(owned, mode) {
         const numbers = slots.map((s) => s.n).join(', ')
         confedHTML += `
           <div class="row">
-            <div class="row-name">${team.flag} <strong>${team.name}</strong> <span class="code">${team.code}</span> <span class="row-count">(${slots.length})</span></div>
-            <div class="row-nums">${numbers}</div>
+            <span class="row-name">${team.flag} <strong>${team.name}</strong> <span class="code">${team.code}</span> <span class="row-count">(${slots.length})</span></span>
+            <span class="row-nums">${numbers}</span>
           </div>
         `
       }
@@ -1263,8 +1264,8 @@ function buildPrintHTML(owned, mode) {
         <section class="confed">
           <h2>CAMPEONES DEL MUNDO <span class="confed-label">${champsToShow.length} faltan</span></h2>
           <div class="row">
-            <div class="row-name"><strong>Campeones</strong></div>
-            <div class="row-nums">${numbers}</div>
+            <span class="row-name"><strong>Campeones</strong></span>
+            <span class="row-nums">${numbers}</span>
           </div>
         </section>
       `
@@ -1348,9 +1349,45 @@ function buildPrintHTML(owned, mode) {
     margin-top: 12px; padding-top: 8px; border-top: 1px solid #e7e5e4;
     font-size: 8pt; color: #78716c; text-align: center;
   }
+
+  /* MODO FALTANTES: una sola hoja, 2 columnas */
+  .missing { font-size: 8.5pt; line-height: 1.25; }
+  .missing > header { padding-bottom: 4px; margin-bottom: 6px; }
+  .missing h1 { font-size: 13pt; }
+  .missing .meta { font-size: 8pt; }
+  .missing .meta strong { font-size: 9pt; }
+  .missing main {
+    column-count: 2;
+    column-gap: 10mm;
+    column-fill: balance;
+  }
+  .missing .confed { margin: 0 0 4px; break-inside: avoid; }
+  .missing .confed h2 {
+    font-size: 8.5pt; margin: 3px 0 2px; padding: 2px 5px;
+    border-left-width: 3px;
+  }
+  .missing .confed-label { font-size: 7pt; margin-left: 4px; }
+  .missing .row {
+    display: block; padding: 1px 0; border-bottom: none;
+    break-inside: avoid; line-height: 1.3;
+  }
+  .missing .row-name {
+    display: inline; flex: none; font-size: 8pt; margin-right: 3px;
+  }
+  .missing .row-name .code { display: none; }
+  .missing .row-name .row-count {
+    font-size: 7.5pt; margin-left: 1px;
+  }
+  .missing .row-name::after { content: ":"; margin-left: 1px; }
+  .missing .row-nums {
+    display: inline; flex: none; font-size: 8.5pt;
+    line-height: 1.3;
+  }
+  .missing footer { margin-top: 6px; font-size: 7pt; }
+  @page { size: A4; margin: 10mm; }
 </style>
 </head>
-<body>
+<body class="${showAll ? 'full' : 'missing'}">
   <header>
     <div>
       <h1>${showAll ? 'Mi álbum Panini' : 'Me faltan estas figuritas'}</h1>
@@ -1361,9 +1398,9 @@ function buildPrintHTML(owned, mode) {
       <strong>${missing} faltantes</strong>
     </div>
   </header>
-  ${body}
+  <main>${body}</main>
   <footer>
-    1 = escudo (amarillo) · 13 = plantel (azul) · resto jugadores · 00-08 = inicio · 9-19 = campeones
+    1 = escudo · 13 = plantel · resto jugadores · 00-08 = inicio · 9-19 = campeones
   </footer>
 </body>
 </html>`
