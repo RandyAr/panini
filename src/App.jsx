@@ -428,9 +428,64 @@ function Tracker({ onLogout }) {
     input.click()
   }
 
-  // Imprimir: en vez de window.open() usamos iframe (no se bloquea)
+  // Imprimir: iframe en desktop, inline + @media print en mobile
+  // (los navegadores móviles no disparan el diálogo nativo desde un iframe oculto)
   const handlePrint = (mode) => {
     const html = buildPrintHTML(owned, mode)
+    const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent)
+
+    if (isMobile) {
+      const parser = new DOMParser()
+      const printDoc = parser.parseFromString(html, 'text/html')
+
+      let collectedCSS = ''
+      printDoc.head.querySelectorAll('style').forEach((s) => {
+        collectedCSS += s.textContent
+      })
+
+      const container = document.createElement('div')
+      container.id = '__panini-print__'
+      container.innerHTML = printDoc.body.innerHTML
+
+      const styleEl = document.createElement('style')
+      styleEl.id = '__panini-print-style__'
+      styleEl.textContent = `
+        @media screen { #__panini-print__ { display: none !important; } }
+        @media print {
+          body > *:not(#__panini-print__) { display: none !important; }
+          #__panini-print__ { display: block !important; }
+          ${collectedCSS}
+        }
+      `
+
+      const originalTitle = document.title
+      document.head.appendChild(styleEl)
+      document.body.appendChild(container)
+      if (printDoc.title) document.title = printDoc.title
+
+      let cleaned = false
+      const cleanup = () => {
+        if (cleaned) return
+        cleaned = true
+        container.remove()
+        styleEl.remove()
+        document.title = originalTitle
+        window.removeEventListener('afterprint', cleanup)
+      }
+      window.addEventListener('afterprint', cleanup)
+      setTimeout(cleanup, 120000)
+
+      setTimeout(() => {
+        try {
+          window.print()
+        } catch (e) {
+          console.error(e)
+          cleanup()
+        }
+      }, 100)
+      return
+    }
+
     const iframe = document.createElement('iframe')
     iframe.style.position = 'fixed'
     iframe.style.right = '0'
