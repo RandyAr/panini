@@ -1123,7 +1123,8 @@ function buildPrintHTML(owned, mode) {
   for (const c of CHAMPIONS_STICKERS) if (owned[c.id]) totalOwned++
   const missing = TOTAL_FIGURITAS - totalOwned
 
-  let body = ''
+  // Build sections with weights for column balancing in missing mode
+  const sections = []
 
   const introToShow = INTRO_STICKERS.filter((s) => showAll || !owned[s.id])
   if (introToShow.length > 0) {
@@ -1134,15 +1135,19 @@ function buildPrintHTML(owned, mode) {
           return `<span class="${cls}">${s.number} ${s.label}</span>`
         })
         .join('')
-      body += `
+      sections.push({
+        html: `
         <section class="confed">
           <h2>INICIO DEL ÁLBUM <span class="confed-label">figuritas 00-08</span></h2>
           <div class="team"><div class="slots">${html}</div></div>
         </section>
-      `
+      `,
+        weight: 3,
+      })
     } else {
       const numbers = introToShow.map((s) => s.number).join(', ')
-      body += `
+      sections.push({
+        html: `
         <section class="confed">
           <h2>INICIO DEL ÁLBUM <span class="confed-label">${introToShow.length} faltan</span></h2>
           <div class="row">
@@ -1150,13 +1155,17 @@ function buildPrintHTML(owned, mode) {
             <span class="row-nums">${numbers}</span>
           </div>
         </section>
-      `
+      `,
+        weight: 3,
+      })
     }
   }
 
   for (const confed of CONFED_ORDER) {
     const teams = TEAMS.filter((t) => t.confed === confed)
     let confedHTML = ''
+    let teamCount = 0
+    let missingCount = 0
 
     for (const team of teams) {
       const slots = []
@@ -1165,6 +1174,8 @@ function buildPrintHTML(owned, mode) {
         if (showAll || !has) slots.push({ n, has })
       }
       if (slots.length === 0) continue
+      teamCount++
+      missingCount += slots.length
 
       if (showAll) {
         const teamSlots = slots
@@ -1193,12 +1204,16 @@ function buildPrintHTML(owned, mode) {
     }
 
     if (confedHTML) {
-      body += `
+      sections.push({
+        html: `
         <section class="confed">
           <h2>${confed} <span class="confed-label">${CONFED_META[confed].label}</span></h2>
           ${confedHTML}
         </section>
-      `
+      `,
+        // Estimate lines: header (2) + each team (1 line for short, 2 for wrapped)
+        weight: 2 + teamCount + Math.ceil(missingCount / 18),
+      })
     }
   }
 
@@ -1211,15 +1226,19 @@ function buildPrintHTML(owned, mode) {
           return `<span class="${cls}">${c.number}</span>`
         })
         .join('')
-      body += `
+      sections.push({
+        html: `
         <section class="confed">
           <h2>CAMPEONES DEL MUNDO <span class="confed-label">figuritas 9-19</span></h2>
           <div class="team"><div class="slots">${html}</div></div>
         </section>
-      `
+      `,
+        weight: 3,
+      })
     } else {
       const numbers = champsToShow.map((c) => c.number).join(', ')
-      body += `
+      sections.push({
+        html: `
         <section class="confed">
           <h2>CAMPEONES DEL MUNDO <span class="confed-label">${champsToShow.length} faltan</span></h2>
           <div class="row">
@@ -1227,8 +1246,31 @@ function buildPrintHTML(owned, mode) {
             <span class="row-nums">${numbers}</span>
           </div>
         </section>
-      `
+      `,
+        weight: 3,
+      })
     }
+  }
+
+  let body
+  if (showAll) {
+    body = sections.map((s) => s.html).join('')
+  } else {
+    // Distribuir secciones en 2 columnas balanceadas por peso (greedy, manteniendo orden)
+    const totalWeight = sections.reduce((sum, s) => sum + s.weight, 0)
+    const target = totalWeight / 2
+    const col1 = []
+    const col2 = []
+    let col1Weight = 0
+    for (const s of sections) {
+      if (col1Weight + s.weight / 2 <= target) {
+        col1.push(s.html)
+        col1Weight += s.weight
+      } else {
+        col2.push(s.html)
+      }
+    }
+    body = `<div class="col">${col1.join('')}</div><div class="col">${col2.join('')}</div>`
   }
 
   return `<!DOCTYPE html>
@@ -1316,10 +1358,11 @@ function buildPrintHTML(owned, mode) {
   .missing .meta { font-size: 7.5pt; }
   .missing .meta strong { font-size: 8.5pt; }
   .missing main {
-    column-count: 2;
-    column-gap: 8mm;
-    column-fill: balance;
+    display: flex;
+    gap: 8mm;
+    align-items: flex-start;
   }
+  .missing .col { flex: 1 1 0; min-width: 0; }
   .missing .confed { margin: 0 0 3px; break-inside: avoid; }
   .missing .confed h2 {
     font-size: 8pt; margin: 2px 0 1px; padding: 1px 4px;
