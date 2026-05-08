@@ -428,101 +428,21 @@ function Tracker({ onLogout }) {
     input.click()
   }
 
-  // Imprimir: iframe en desktop, inline + @media print en mobile
-  // (los navegadores móviles no disparan el diálogo nativo desde un iframe oculto)
+  // Imprimir: iframe en desktop, nueva pestaña dedicada en mobile
+  // (en mobile el iframe oculto no dispara el diálogo nativo y la inyección
+  //  inline tampoco se ve en la preview de iOS)
   const handlePrint = (mode) => {
     const html = buildPrintHTML(owned, mode)
     const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent)
 
     if (isMobile) {
-      const parser = new DOMParser()
-      const printDoc = parser.parseFromString(html, 'text/html')
-
-      let collectedCSS = ''
-      printDoc.head.querySelectorAll('style').forEach((s) => {
-        collectedCSS += s.textContent
-      })
-
-      const container = document.createElement('div')
-      container.id = '__panini-print__'
-      if (printDoc.body.className) container.className = printDoc.body.className
-      container.innerHTML = printDoc.body.innerHTML
-
-      const closeBtn = document.createElement('button')
-      closeBtn.id = '__panini-print-close__'
-      closeBtn.type = 'button'
-      closeBtn.textContent = '✕ Cerrar'
-
-      const printBtn = document.createElement('button')
-      printBtn.id = '__panini-print-again__'
-      printBtn.type = 'button'
-      printBtn.textContent = '🖨 Imprimir'
-
-      const styleEl = document.createElement('style')
-      styleEl.id = '__panini-print-style__'
-      styleEl.textContent = `
-        body > *:not(#__panini-print__):not(#__panini-print-close__):not(#__panini-print-again__) {
-          display: none !important;
-        }
-        #__panini-print__ {
-          background: white !important;
-          padding: 16px 16px 80px;
-          min-height: 100vh;
-        }
-        #__panini-print-close__, #__panini-print-again__ {
-          position: fixed; bottom: 16px; z-index: 99999;
-          padding: 12px 18px; border: none; border-radius: 999px;
-          font-size: 15px; font-weight: 700; cursor: pointer;
-          box-shadow: 0 6px 18px rgba(0,0,0,0.25);
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
-        #__panini-print-close__ {
-          right: 16px; background: #0f172a; color: #fff;
-        }
-        #__panini-print-again__ {
-          left: 16px; background: #047857; color: #fff;
-        }
-        @media print {
-          #__panini-print-close__, #__panini-print-again__ { display: none !important; }
-          #__panini-print__ { padding: 0 !important; min-height: 0 !important; }
-        }
-        ${collectedCSS}
-      `
-
-      const originalTitle = document.title
-      const originalScrollY = window.scrollY
-      document.head.appendChild(styleEl)
-      document.body.appendChild(container)
-      document.body.appendChild(closeBtn)
-      document.body.appendChild(printBtn)
-      if (printDoc.title) document.title = printDoc.title
-      window.scrollTo(0, 0)
-
-      let cleaned = false
-      const cleanup = () => {
-        if (cleaned) return
-        cleaned = true
-        container.remove()
-        styleEl.remove()
-        closeBtn.remove()
-        printBtn.remove()
-        document.title = originalTitle
-        window.scrollTo(0, originalScrollY)
-        window.removeEventListener('afterprint', cleanup)
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const w = window.open(url, '_blank')
+      if (!w) {
+        window.location.href = url
       }
-      const triggerPrint = () => {
-        try {
-          window.print()
-        } catch (e) {
-          console.error(e)
-        }
-      }
-      closeBtn.addEventListener('click', cleanup)
-      printBtn.addEventListener('click', triggerPrint)
-      window.addEventListener('afterprint', cleanup)
-      setTimeout(cleanup, 600000)
-
-      setTimeout(triggerPrint, 250)
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
       return
     }
 
@@ -1390,40 +1310,58 @@ function buildPrintHTML(owned, mode) {
   }
 
   /* MODO FALTANTES: una sola hoja, 2 columnas */
-  .missing { font-size: 8.5pt; line-height: 1.25; }
-  .missing > header { padding-bottom: 4px; margin-bottom: 6px; }
-  .missing h1 { font-size: 13pt; }
-  .missing .meta { font-size: 8pt; }
-  .missing .meta strong { font-size: 9pt; }
+  .missing { font-size: 8pt; line-height: 1.2; }
+  .missing > header { padding-bottom: 3px; margin-bottom: 4px; }
+  .missing h1 { font-size: 12pt; }
+  .missing .meta { font-size: 7.5pt; }
+  .missing .meta strong { font-size: 8.5pt; }
   .missing main {
     column-count: 2;
-    column-gap: 10mm;
+    column-gap: 8mm;
     column-fill: balance;
   }
-  .missing .confed { margin: 0 0 4px; break-inside: avoid; }
+  .missing .confed { margin: 0 0 3px; break-inside: avoid; }
   .missing .confed h2 {
-    font-size: 8.5pt; margin: 3px 0 2px; padding: 2px 5px;
+    font-size: 8pt; margin: 2px 0 1px; padding: 1px 4px;
     border-left-width: 3px;
   }
-  .missing .confed-label { font-size: 7pt; margin-left: 4px; }
+  .missing .confed-label { font-size: 6.5pt; margin-left: 3px; }
   .missing .row {
-    display: block; padding: 1px 0; border-bottom: none;
-    break-inside: avoid; line-height: 1.3;
+    display: block; padding: 0; border-bottom: none;
+    break-inside: avoid; line-height: 1.25;
   }
   .missing .row-name {
-    display: inline; flex: none; font-size: 8pt; margin-right: 3px;
+    display: inline; flex: none; font-size: 7.5pt; margin-right: 2px;
   }
   .missing .row-name .code { display: none; }
   .missing .row-name .row-count {
-    font-size: 7.5pt; margin-left: 1px;
+    font-size: 7pt; margin-left: 1px;
   }
   .missing .row-name::after { content: ":"; margin-left: 1px; }
   .missing .row-nums {
-    display: inline; flex: none; font-size: 8.5pt;
-    line-height: 1.3;
+    display: inline; flex: none; font-size: 8pt;
+    line-height: 1.25;
   }
-  .missing footer { margin-top: 6px; font-size: 7pt; }
-  @page { size: A4; margin: 10mm; }
+  .missing footer { margin-top: 4px; font-size: 6.5pt; }
+  @page { size: A4; margin: 8mm; }
+
+  /* Botones flotantes (solo visibles en pantalla cuando se abre la hoja) */
+  .print-actions {
+    position: fixed; bottom: 16px; left: 0; right: 0; z-index: 99999;
+    display: flex; justify-content: center; gap: 12px; pointer-events: none;
+  }
+  .print-actions button {
+    pointer-events: auto;
+    padding: 12px 20px; border: none; border-radius: 999px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .print-actions .btn-print { background: #047857; color: #fff; }
+  .print-actions .btn-back { background: #0f172a; color: #fff; }
+  @media print {
+    .print-actions { display: none !important; }
+  }
 </style>
 </head>
 <body class="${showAll ? 'full' : 'missing'}">
@@ -1441,6 +1379,17 @@ function buildPrintHTML(owned, mode) {
   <footer>
     1 = escudo · 13 = plantel · resto jugadores · 00-08 = inicio · 9-19 = campeones
   </footer>
+  <div class="print-actions">
+    <button class="btn-print" type="button" onclick="window.print()">🖨 Imprimir</button>
+    <button class="btn-back" type="button" onclick="if(window.opener){window.close()}else{history.back()}">← Volver</button>
+  </div>
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        try { window.print(); } catch (e) { console.error(e); }
+      }, 400);
+    });
+  </script>
 </body>
 </html>`
 }
